@@ -20,7 +20,7 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     # Замените на ваш путь к файлу
-    df = pd.read_pickle('/content/sub_df_100.pkl')
+    df = pd.read_pickle('sub_df_100.pkl')
 
     # Очистка данных
     df['all_plants'] = df['all_plants'].fillna('')
