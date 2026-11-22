@@ -20,22 +20,25 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     # Замените на ваш путь к файлу
-    df = pd.read_pickle('sub_df_100.pkl')
+    df = pd.read_pickle('/content/df_roles_chem_prop.pkl')
 
     # Очистка данных
     df['all_plants'] = df['all_plants'].fillna('')
-    df['chebi_roles'] = df['chebi_roles'].fillna('')
-    df['activity'] = df['activity'].fillna('')
+    df['all_roles'] = df['all_roles'].fillna('')
+    df['chebi'] = df['chebi'].fillna('')
+    df['chembl'] = df['chembl'].fillna('')
+    df['synonyms'] = df['synonyms'].fillna('')
+    df['lipinski_pass'] = df['lipinski_pass'].fillna('')
+    df['iupac'] = df['iupac'].fillna('')
+    df['smiles'] = df['smiles'].fillna('')
+    df['image_url'] = df['image_url'].fillna('')
 
-    # Создаем список активностей для быстрого поиска
-    df['activities_list'] = df['activity'].apply(
+    # Создаем списки для быстрого поиска
+    df['roles_list'] = df['all_roles'].apply(
         lambda x: [a.strip() for a in str(x).split(',') if a.strip()]
     )
     df['plants_list'] = df['all_plants'].apply(
         lambda x: [p.strip() for p in str(x).split(',') if p.strip()]
-    )
-    df['chebi_list'] = df['chebi_roles'].apply(
-        lambda x: [r.strip() for r in str(x).split(';') if r.strip()]
     )
 
     return df
@@ -47,10 +50,9 @@ st.sidebar.image("https://img.icons8.com/color/96/000000/plant-under-sun.png", w
 st.sidebar.title("🌿 Фитохимическая БД")
 st.sidebar.markdown("---")
 
-# Сбор всех уникальных активностей и растений для фильтров
-all_activities = sorted(set([a for sublist in df['activities_list'] for a in sublist]))
+# Сбор всех уникальных ролей и растений для фильтров
+all_roles = sorted(set([r for sublist in df['roles_list'] for r in sublist]))
 all_plants = sorted(set([p for sublist in df['plants_list'] for p in sublist]))
-all_chebi_roles = sorted(set([r for sublist in df['chebi_list'] for r in sublist]))
 
 # Фильтры в боковой панели
 st.sidebar.subheader("🔍 Фильтры")
@@ -58,10 +60,10 @@ st.sidebar.subheader("🔍 Фильтры")
 # Поиск по названию
 search_term = st.sidebar.text_input("Поиск по названию", placeholder="Например: Quercetin")
 
-# Фильтр по активности
-selected_activity = st.sidebar.selectbox(
-    "Активность (Duke)",
-    ["Все"] + all_activities[:50]  # Ограничим для скорости
+# Фильтр по роли
+selected_role = st.sidebar.selectbox(
+    "Роль (Duke)",
+    ["Все"] + all_roles[:50]
 )
 
 # Фильтр по растению
@@ -70,17 +72,11 @@ selected_plant = st.sidebar.selectbox(
     ["Все"] + all_plants[:50]
 )
 
-# Фильтр по CHEBI роли
-selected_chebi = st.sidebar.selectbox(
-    "CHEBI роль",
-    ["Все"] + all_chebi_roles[:50]
-)
-
 # Статистика
 st.sidebar.markdown("---")
 st.sidebar.metric("Всего веществ", len(df))
 st.sidebar.metric("Уникальных растений", len(all_plants))
-st.sidebar.metric("Уникальных активностей", len(all_activities))
+st.sidebar.metric("Уникальных ролей", len(all_roles))
 
 # ================== ФИЛЬТРАЦИЯ ==================
 filtered_df = df.copy()
@@ -88,12 +84,13 @@ filtered_df = df.copy()
 if search_term:
     filtered_df = filtered_df[
         filtered_df['name'].str.contains(search_term, case=False, na=False) |
-        filtered_df['iupac'].str.contains(search_term, case=False, na=False)
+        filtered_df['iupac'].str.contains(search_term, case=False, na=False) |
+        filtered_df['synonyms'].str.contains(search_term, case=False, na=False)
     ]
 
-if selected_activity != "Все":
+if selected_role != "Все":
     filtered_df = filtered_df[
-        filtered_df['activities_list'].apply(lambda x: selected_activity in x)
+        filtered_df['roles_list'].apply(lambda x: selected_role in x)
     ]
 
 if selected_plant != "Все":
@@ -101,26 +98,21 @@ if selected_plant != "Все":
         filtered_df['plants_list'].apply(lambda x: selected_plant in x)
     ]
 
-if selected_chebi != "Все":
-    filtered_df = filtered_df[
-        filtered_df['chebi_list'].apply(lambda x: selected_chebi in x)
-    ]
-
 # ================== ОСНОВНОЙ КОНТЕНТ ==================
 st.title("🌿 База данных лекарственных растений РФ")
 st.markdown(f"**Найдено веществ: {len(filtered_df)}**")
 
 # Табы для разных представлений
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📋 Карточки веществ",
     "📊 Статистика",
     "🕸️ Граф связей",
-    "📈 Аналитика"
+    "📈 Аналитика",
+    "📐 Физико-химические свойства"
 ])
 
 # ================== TAB 1: КАРТОЧКИ ==================
 with tab1:
-    # Настройка отображения карточек
     cols_per_row = 3
     num_items = len(filtered_df)
 
@@ -133,6 +125,10 @@ with tab1:
 
                 with cols[j]:
                     with st.container():
+                        # Картинка соединения
+                        if row['image_url']:
+                            st.image(row['image_url'], use_column_width=True)
+
                         st.markdown(f"""
                         <div style="
                             border: 1px solid #ddd;
@@ -141,7 +137,7 @@ with tab1:
                             margin-bottom: 15px;
                             background: white;
                             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                            height: 300px;
+                            height: 280px;
                             overflow-y: auto;
                         ">
                             <h4 style="margin-top: 0; color: #2c3e50;">{row['name']}</h4>
@@ -153,13 +149,16 @@ with tab1:
                                 {', ...' if len(row['plants_list']) > 3 else ''}
                             </p>
                             <p style="font-size: 0.85em;">
-                                <b>💊 Активности:</b> {', '.join(row['activities_list'][:3])}
-                                {', ...' if len(row['activities_list']) > 3 else ''}
+                                <b>💊 Роли:</b> {', '.join(row['roles_list'][:3])}
+                                {', ...' if len(row['roles_list']) > 3 else ''}
+                            </p>
+                            <p style="font-size: 0.85em;">
+                                <b>⚗️ MW:</b> {row['MolecularWeight']:.2f} |
+                                <b>XLogP:</b> {row['XLogP'] if pd.notna(row['XLogP']) else 'N/A'}
                             </p>
                         </div>
                         """, unsafe_allow_html=True)
 
-                        # Кнопка "Подробнее"
                         if st.button(f"Подробнее", key=f"btn_{row['InChIKey']}"):
                             st.session_state.selected_compound = row['InChIKey']
                             st.rerun()
@@ -169,18 +168,17 @@ with tab2:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("Топ-20 активностей")
-        # Собираем все активности
-        all_acts = [a for sublist in df['activities_list'] for a in sublist if a]
-        act_counts = Counter(all_acts).most_common(20)
+        st.subheader("Топ-20 ролей")
+        all_roles_flat = [a for sublist in df['roles_list'] for a in sublist if a]
+        role_counts = Counter(all_roles_flat).most_common(20)
 
-        if act_counts:
+        if role_counts:
             fig = px.bar(
-                x=[c[1] for c in act_counts],
-                y=[c[0] for c in act_counts],
+                x=[c[1] for c in role_counts],
+                y=[c[0] for c in role_counts],
                 orientation='h',
-                title="Самые частые активности",
-                color=[c[1] for c in act_counts],
+                title="Самые частые роли",
+                color=[c[1] for c in role_counts],
                 color_continuous_scale='Viridis'
             )
             fig.update_layout(height=500)
@@ -203,25 +201,24 @@ with tab2:
             fig.update_layout(height=500)
             st.plotly_chart(fig, use_container_width=True)
 
-    # Тепловая карта корреляций активностей
-    st.subheader("Корреляции активностей (топ-10)")
-    # Берем топ-10 активностей и строим матрицу совстречаемости
-    top_acts = [act for act, _ in act_counts[:10]]
-    co_occurrence = pd.DataFrame(0, index=top_acts, columns=top_acts)
+    # Тепловая карта корреляций ролей
+    st.subheader("Корреляции ролей (топ-10)")
+    top_roles = [act for act, _ in role_counts[:10]]
+    co_occurrence = pd.DataFrame(0, index=top_roles, columns=top_roles)
 
     for _, row in df.iterrows():
-        acts = row['activities_list']
-        for a1 in acts:
-            if a1 in top_acts:
-                for a2 in acts:
-                    if a2 in top_acts:
+        roles = row['roles_list']
+        for a1 in roles:
+            if a1 in top_roles:
+                for a2 in roles:
+                    if a2 in top_roles:
                         co_occurrence.loc[a1, a2] += 1
 
     fig = px.imshow(
         co_occurrence,
         text_auto=True,
         color_continuous_scale='RdBu_r',
-        title="Совстречаемость активностей"
+        title="Совстречаемость ролей"
     )
     fig.update_layout(height=500)
     st.plotly_chart(fig, use_container_width=True)
@@ -230,37 +227,29 @@ with tab2:
 with tab3:
     st.subheader("🕸️ Граф связей растений и веществ")
 
-    # Ограничим количество для производительности
     sample_size = min(50, len(filtered_df))
     sample_df = filtered_df.sample(sample_size, random_state=42)
 
-    # Строим граф
     G = nx.Graph()
 
-    # Добавляем узлы
     for _, row in sample_df.iterrows():
         compound_name = row['name']
         G.add_node(compound_name, type='compound')
 
-        # Добавляем растения
-        for plant in row['plants_list'][:3]:  # Ограничим для красоты
+        for plant in row['plants_list'][:3]:
             G.add_node(plant, type='plant')
             G.add_edge(compound_name, plant, weight=1)
 
-        # Добавляем активности
-        for activity in row['activities_list'][:3]:
-            G.add_node(activity, type='activity')
-            G.add_edge(compound_name, activity, weight=1)
+        for role in row['roles_list'][:3]:
+            G.add_node(role, type='role')
+            G.add_edge(compound_name, role, weight=1)
 
-    # Визуализация графа
     pos = nx.spring_layout(G, k=2, iterations=50)
 
-    # Создаем трассы для разных типов узлов
-    node_types = {'compound': 'blue', 'plant': 'green', 'activity': 'red'}
+    node_types = {'compound': 'blue', 'plant': 'green', 'role': 'red'}
     edge_traces = []
     node_traces = []
 
-    # Рёбра
     for edge in G.edges():
         x0, y0 = pos[edge[0]]
         x1, y1 = pos[edge[1]]
@@ -273,7 +262,6 @@ with tab3:
             showlegend=False
         ))
 
-    # Узлы
     for node_type, color in node_types.items():
         nodes = [n for n, d in G.nodes(data=True) if d.get('type') == node_type]
         x = [pos[n][0] for n in nodes]
@@ -292,7 +280,7 @@ with tab3:
 
     fig = go.Figure(data=edge_traces + node_traces)
     fig.update_layout(
-        title="Сеть: Вещество → Растение → Активность",
+        title="Сеть: Вещество → Растение → Роль",
         showlegend=True,
         height=700,
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
@@ -306,68 +294,166 @@ with tab4:
 
     col1, col2, col3 = st.columns(3)
 
-    # Метрики
     with col1:
-        avg_activities = df['activities_list'].apply(len).mean()
-        st.metric("Среднее активностей на вещество", f"{avg_activities:.1f}")
+        avg_roles = df['roles_list'].apply(len).mean()
+        st.metric("Среднее ролей на вещество", f"{avg_roles:.1f}")
 
     with col2:
         avg_plants = df['plants_list'].apply(len).mean()
         st.metric("Среднее растений на вещество", f"{avg_plants:.1f}")
 
     with col3:
-        coverage = (df['activities_list'].apply(len) > 0).mean() * 100
-        st.metric("Покрытие активностями", f"{coverage:.1f}%")
+        coverage = (df['roles_list'].apply(len) > 0).mean() * 100
+        st.metric("Покрытие ролями", f"{coverage:.1f}%")
 
-    # Распределение
-    st.subheader("Распределение количества активностей")
-    act_counts_dist = df['activities_list'].apply(len)
+    st.subheader("Распределение количества ролей")
+    roles_counts_dist = df['roles_list'].apply(len)
     fig = px.histogram(
-        act_counts_dist,
+        roles_counts_dist,
         nbins=20,
-        title="Сколько активностей у веществ",
-        labels={'value': 'Количество активностей', 'count': 'Число веществ'}
+        title="Сколько ролей у веществ",
+        labels={'value': 'Количество ролей', 'count': 'Число веществ'}
     )
     st.plotly_chart(fig, use_container_width=True)
 
+# ================== TAB 5: ФИЗИКО-ХИМИЧЕСКИЕ СВОЙСТВА ==================
+with tab5:
+    st.subheader("📐 Физико-химические свойства веществ")
+
+    properties = [
+        "MolecularWeight", "XLogP", "HBondDonorCount", "HBondAcceptorCount",
+        "RotatableBondCount", "TPSA", "HeavyAtomCount", "Charge", "Complexity"
+    ]
+
+    # Выбор свойств для отображения
+    selected_props = st.multiselect(
+        "Выберите свойства для отображения",
+        properties,
+        default=properties
+    )
+
+    if selected_props:
+        # Таблица с выбранными свойствами
+        display_cols = ['name'] + selected_props
+        display_df = filtered_df[display_cols].copy()
+        display_df = display_df.rename(columns={
+            'name': 'Название',
+            'MolecularWeight': 'Мол. масса',
+            'XLogP': 'XLogP',
+            'HBondDonorCount': 'Доноры H-связей',
+            'HBondAcceptorCount': 'Акцепторы H-связей',
+            'RotatableBondCount': 'Вращаемые связи',
+            'TPSA': 'TPSA',
+            'HeavyAtomCount': 'Тяжёлые атомы',
+            'Charge': 'Заряд',
+            'Complexity': 'Сложность'
+        })
+
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            height=500
+        )
+
+        # Скачать таблицу
+        csv = display_df.to_csv(index=False)
+        st.download_button(
+            label="📥 Скачать таблицу свойств (CSV)",
+            data=csv,
+            file_name="physchem_properties.csv",
+            mime="text/csv"
+        )
+
+        # Гистограммы распределения выбранных свойств
+        st.subheader("Распределение выбранных свойств")
+        n_cols = 2
+        n_rows = (len(selected_props) + 1) // n_cols
+        fig = make_subplots(
+            rows=n_rows, cols=n_cols,
+            subplot_titles=selected_props
+        )
+
+        for i, prop in enumerate(selected_props):
+            r = i // n_cols + 1
+            c = i % n_cols + 1
+            fig.add_trace(
+                go.Histogram(
+                    x=filtered_df[prop].dropna(),
+                    name=prop,
+                    nbinsx=25
+                ),
+                row=r, col=c
+            )
+
+        fig.update_layout(
+            height=300 * n_rows,
+            showlegend=False,
+            title_text="Распределение физико-химических свойств"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
 # ================== ДЕТАЛЬНАЯ СТРАНИЦА КОМПОНЕНТА ==================
-# Проверяем, выбран ли компонент для детального просмотра
 if 'selected_compound' in st.session_state:
     selected_inkey = st.session_state.selected_compound
     compound = df[df['InChIKey'] == selected_inkey].iloc[0]
 
-    # Модальное окно с деталями
     with st.expander(f"📄 Детальная информация: {compound['name']}", expanded=True):
         col1, col2 = st.columns([2, 1])
 
         with col1:
+            # Картинка
+            if compound['image_url']:
+                st.image(compound['image_url'], width=300)
+
             st.markdown(f"### {compound['name']}")
             st.markdown(f"**InChIKey:** `{compound['InChIKey']}`")
             st.markdown(f"**PubChem CID:** {compound['pubchem_cid']}")
-            st.markdown(f"**CHEBI:** {compound['chebi']}")
-            st.markdown(f"**ChEMBL:** {compound['chembl']}")
 
+            if compound['chebi']:
+                st.markdown(f"**CHEBI:** {compound['chebi']}")
+            if compound['chembl']:
+                st.markdown(f"**ChEMBL:** {compound['chembl']}")
             if compound['iupac']:
                 st.markdown(f"**IUPAC:** {compound['iupac']}")
-
             if compound['smiles']:
                 st.markdown(f"**SMILES:** `{compound['smiles']}`")
+            if compound['synonyms']:
+                st.markdown(f"**Синонимы:** {compound['synonyms']}")
+
+            # Физико-химические свойства
+            st.markdown("### 📐 Физико-химические свойства")
+            props_df = pd.DataFrame({
+                'Свойство': [
+                    'Молекулярная масса', 'XLogP', 'TPSA', 'Сложность',
+                    'Заряд', 'Доноры H-связей', 'Акцепторы H-связей',
+                    'Вращаемые связи', 'Тяжёлые атомы'
+                ],
+                'Значение': [
+                    f"{compound['MolecularWeight']:.2f}",
+                    compound['XLogP'] if pd.notna(compound['XLogP']) else 'N/A',
+                    f"{compound['TPSA']:.2f}",
+                    compound['Complexity'],
+                    compound['Charge'],
+                    compound['HBondDonorCount'],
+                    compound['HBondAcceptorCount'],
+                    compound['RotatableBondCount'],
+                    compound['HeavyAtomCount']
+                ]
+            })
+            st.table(props_df)
+
+            if compound['lipinski_pass']:
+                st.markdown(f"**Lipinski pass:** {compound['lipinski_pass']}")
 
         with col2:
             st.markdown("### 🌱 Растения")
             for plant in compound['plants_list']:
                 st.markdown(f"- {plant}")
 
-            st.markdown("### 💊 Активности")
-            for activity in compound['activities_list']:
-                st.markdown(f"- {activity}")
+            st.markdown("### 💊 Роли")
+            for role in compound['roles_list']:
+                st.markdown(f"- {role}")
 
-            if compound['chebi_list']:
-                st.markdown("### 🧪 CHEBI роли")
-                for role in compound['chebi_list'][:5]:
-                    st.markdown(f"- {role}")
-
-        # Кнопка закрытия
         if st.button("Закрыть", key="close_detail"):
             del st.session_state.selected_compound
             st.rerun()
@@ -378,12 +464,12 @@ st.sidebar.markdown("""
 **Инструкция:**
 1. Используйте фильтры слева
 2. Нажмите "Подробнее" на карточке
-3. Исследуйте статистику и граф
+3. Исследуйте статистику, граф и свойства
 """)
 
 # Кнопка для экспорта
 if st.sidebar.button("📥 Экспорт отфильтрованных данных"):
-    csv = filtered_df[['name', 'InChIKey', 'all_plants', 'activity']].to_csv(index=False)
+    csv = filtered_df[['name', 'InChIKey', 'all_plants', 'all_roles']].to_csv(index=False)
     st.sidebar.download_button(
         label="Скачать CSV",
         data=csv,
