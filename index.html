@@ -834,8 +834,8 @@
             if (item.all_plants) {
                 item.all_plants.split(',').forEach(p => plants.add(p.trim()));
             }
-            if (item.activity) {
-                item.activity.split(',').forEach(a => activities.add(a.trim()));
+            if (item.all_roles) {
+                item.all_roles.split(',').forEach(a => activities.add(a.trim()));
             }
         });
         
@@ -853,8 +853,8 @@
             if (item.all_plants) {
                 item.all_plants.split(',').forEach(p => plants.add(p.trim()));
             }
-            if (item.activity) {
-                item.activity.split(',').forEach(a => activities.add(a.trim()));
+            if (item.all_roles) {
+                item.all_roles.split(',').forEach(a => activities.add(a.trim()));
             }
         });
         
@@ -907,7 +907,7 @@
             
             // Фильтр по активности
             if (activity) {
-                const acts = (item.activity || '').split(',').map(a => a.trim());
+                const acts = (item.all_roles || '').split(',').map(a => a.trim());
                 if (!acts.includes(activity)) return false;
             }
             
@@ -949,10 +949,10 @@
         const gridClass = currentView === 'grid' ? '' : 'list-view';
         let html = `<div class="cards-grid ${gridClass}">`;
         
-        pageData.forEach((item, index) => {
+            pageData.forEach((item, index) => {
             const plants = (item.all_plants || '').split(',').map(p => p.trim()).filter(Boolean);
-            const activities = (item.activity || '').split(',').map(a => a.trim()).filter(Boolean);
-            const chebiRoles = (item.chebi_roles || '').split(';').map(r => r.trim()).filter(Boolean);
+            const activities = (item.all_roles || '').split(',').map(a => a.trim()).filter(Boolean);
+            const chebiRoles = (item.all_roles || '').split(',').map(r => r.trim()).filter(Boolean);
             
             html += `
                 <div class="compound-card" data-index="${start + index}">
@@ -1035,12 +1035,14 @@
     
     function openModal(item) {
         const plants = (item.all_plants || '').split(',').map(p => p.trim()).filter(Boolean);
-        const activities = (item.activity || '').split(',').map(a => a.trim()).filter(Boolean);
-        const chebiRoles = (item.chebi_roles || '').split(';').map(r => r.trim()).filter(Boolean);
+        const activities = (item.all_roles || '').split(',').map(a => a.trim()).filter(Boolean);
+        const chebiRoles = (item.all_roles || '').split(',').map(r => r.trim()).filter(Boolean);
         
         modalBody.innerHTML = `
             <h2>${item.name || 'Без названия'}</h2>
             <div class="modal-id">${item.InChIKey || ''}</div>
+            
+            ${item.image_url ? `<img src="${item.image_url}" alt="${item.name}" style="max-width:300px;display:block;margin:16px auto;border-radius:12px;background:#f7fafc;padding:12px;" />` : ''}
             
             <div class="detail-grid">
                 <div class="detail-item">
@@ -1127,7 +1129,7 @@
         console.log('🔄 Начинаю загрузку CSV...');
         
         // ⬇️⬇️⬇️ ИЗМЕНИТЕ НАЗВАНИЕ ВАШЕГО ФАЙЛА ⬇️⬇️⬇️
-        const fileName = 'sub_df_100.csv';  // <--- ЗДЕСЬ ВАШЕ ИМЯ ФАЙЛА
+        const fileName = 'df_roles_chem_prop.csv';  // <--- ЗДЕСЬ ВАШЕ ИМЯ ФАЙЛА
         console.log('📁 Ищу файл:', fileName);
         
         try {
