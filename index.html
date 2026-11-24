@@ -938,68 +938,67 @@
     }
 
     // Рендер результатов
-    function renderResults() {
-        const total = filteredData.length;
-        resultCount.textContent = total;
+function renderResults() {
+    const total = filteredData.length;
+    resultCount.textContent = total;
 
-        if (total === 0) {
-            resultsContainer.innerHTML = `
-                <div class="no-results">
-                    <i class="fas fa-search"></i>
-                    <h3>Ничего не найдено</h3>
-                    <p>Попробуйте изменить параметры поиска</p>
-                </div>
-            `;
-            pagination.innerHTML = '';
-            return;
-        }
-
-        const totalPages = Math.ceil(total / itemsPerPage);
-        const start = (currentPage - 1) * itemsPerPage;
-        const end = Math.min(start + itemsPerPage, total);
-        const pageData = filteredData.slice(start, end);
-
-        const gridClass = currentView === 'grid' ? '' : 'list-view';
-        let html = `<div class="cards-grid ${gridClass}">`;
-
-            pageData.forEach((item, index) => {
-            const plants = (item.all_plants || '').split(',').map(p => p.trim()).filter(Boolean);
-            const activities = cleanList(item.all_roles, ',');
-
-            html += `
-                <div class="compound-card" data-index="${start + index}">
-                    <span class="card-badge">CID ${item.pubchem_cid || 'N/A'}</span>
-                    <h3>${item.name || 'Без названия'}</h3>
-                    <div class="subtitle">${item.InChIKey ? item.InChIKey.slice(0, 30) + '...' : ''}</div>
-                    <div class="tags">
-                        ${plants.slice(0, 3).map(p => `<span class="tag tag-plant">🌱 ${p}</span>`).join('')}
-                        ${plants.length > 3 ? `<span class="tag tag-plant">+${plants.length - 3}</span>` : ''}
-                        ${activities.slice(0, 2).map(a => `<span class="tag tag-activity">💊 ${a}</span>`).join('')}
-                        ${activities.length > 2 ? `<span class="tag tag-activity">+${activities.length - 2}</span>` : ''}
-                      //  ${chebiRoles.slice(0, 1).map(r => `<span class="tag tag-chebi">🧪 ${r}</span>`).join('')}
-                    </div>
-                    <div class="card-footer">
-                        <span><i class="fas fa-flask"></i> ${activities.length} активностей</span>
-                        <span><i class="fas fa-tree"></i> ${plants.length} растений</span>
-                        <span><i class="fas fa-chevron-right"></i> Подробнее</span>
-                    </div>
-                </div>
-            `;
-        });
-
-        html += `</div>`;
-        resultsContainer.innerHTML = html;
-
-        document.querySelectorAll('.compound-card').forEach(card => {
-            card.addEventListener('click', function() {
-                const index = parseInt(this.dataset.index);
-                const item = filteredData[index];
-                if (item) openModal(item);
-            });
-        });
-
-        renderPagination(totalPages);
+    if (total === 0) {
+        resultsContainer.innerHTML = `
+            <div class="no-results">
+                <i class="fas fa-search"></i>
+                <h3>Ничего не найдено</h3>
+                <p>Попробуйте изменить параметры поиска</p>
+            </div>
+        `;
+        pagination.innerHTML = '';
+        return;
     }
+
+    const totalPages = Math.ceil(total / itemsPerPage);
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = Math.min(start + itemsPerPage, total);
+    const pageData = filteredData.slice(start, end);
+
+    const gridClass = currentView === 'grid' ? '' : 'list-view';
+    let html = `<div class="cards-grid ${gridClass}">`;
+
+    pageData.forEach((item, index) => {
+        const plants = (item.all_plants || '').split(',').map(p => p.trim()).filter(Boolean);
+        const activities = cleanList(item.all_roles, ',');   // активности без кавычек/скобок
+
+        html += `
+            <div class="compound-card" data-index="${start + index}">
+                <span class="card-badge">CID ${item.pubchem_cid || 'N/A'}</span>
+                <h3>${item.name || 'Без названия'}</h3>
+                <div class="subtitle">${item.InChIKey ? item.InChIKey.slice(0, 30) + '...' : ''}</div>
+                <div class="tags">
+                    ${plants.slice(0, 3).map(p => `<span class="tag tag-plant">🌱 ${p}</span>`).join('')}
+                    ${plants.length > 3 ? `<span class="tag tag-plant">+${plants.length - 3}</span>` : ''}
+                    ${activities.slice(0, 2).map(a => `<span class="tag tag-activity">🔬 ${a}</span>`).join('')}
+                    ${activities.length > 2 ? `<span class="tag tag-activity">+${activities.length - 2}</span>` : ''}
+                </div>
+                <div class="card-footer">
+                    <span><i class="fas fa-flask"></i> ${activities.length} активностей</span>
+                    <span><i class="fas fa-tree"></i> ${plants.length} растений</span>
+                    <span><i class="fas fa-chevron-right"></i> Подробнее</span>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    resultsContainer.innerHTML = html;
+
+    document.querySelectorAll('.compound-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const index = parseInt(this.dataset.index);
+            const item = filteredData[index];
+            if (item) openModal(item);
+        });
+    });
+
+    renderPagination(totalPages);
+}
 
     // Пагинация
     function renderPagination(totalPages) {
