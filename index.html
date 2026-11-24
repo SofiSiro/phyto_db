@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🌿 Фитохимическая база данных РФ</title>
-    
+
     <!-- Подключение шрифтов -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome для иконок -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
         /* ==================== RESET & BASE ==================== */
         * {
@@ -583,27 +583,27 @@
                 flex-direction: column;
                 align-items: stretch;
             }
-            
+
             .header-stats {
                 justify-content: center;
             }
-            
+
             .search-row {
                 flex-direction: column;
             }
-            
+
             .search-input-wrapper {
                 min-width: auto;
             }
-            
+
             .filter-select {
                 width: 100%;
             }
-            
+
             .cards-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .results-header {
                 flex-direction: column;
                 align-items: stretch;
@@ -615,12 +615,12 @@
                 font-size: 12px;
                 padding: 4px 10px;
             }
-            
+
             .compound-card h3 {
                 font-size: 16px;
                 padding-right: 60px;
             }
-            
+
             .search-container {
                 padding: 16px;
             }
@@ -670,10 +670,10 @@
             <div class="search-row">
                 <div class="search-input-wrapper">
                     <i class="fas fa-search"></i>
-                    <input 
-                        type="text" 
-                        id="searchInput" 
-                        class="search-input" 
+                    <input
+                        type="text"
+                        id="searchInput"
+                        class="search-input"
                         placeholder="Поиск по названию, IUPAC, InChIKey..."
                         autocomplete="off"
                     >
@@ -731,13 +731,26 @@
     // ============================================================
     // 1. ДАННЫЕ (демо-данные для начала)
     // ============================================================
-    
+
     // Объявляем переменную ЗАРАНЕЕ (глобально)
     let allData = [];
     let filteredData = [];
     let currentPage = 1;
     const itemsPerPage = 12;
     let currentView = 'grid';
+
+    // Очищает строку вида "['a', 'b']" или "a, b" в массив чистых строк
+    function cleanList(value, separator) {
+        if (!value) return [];
+        let s = String(value).trim();
+        // убираем внешние квадратные скобки
+        s = s.replace(/^\[/, '').replace(/\]$/, '');
+        // разбиваем
+        const parts = s.split(separator || ',');
+        return parts
+            .map(p => p.trim().replace(/^['"]|['"]$/g, '').trim())
+            .filter(Boolean);
+    }
 
     // Демо-данные (на случай, если CSV не загрузится)
     const demoData = [
@@ -806,7 +819,7 @@
     // ============================================================
     // 2. DOM ЭЛЕМЕНТЫ
     // ============================================================
-    
+
     const searchInput = document.getElementById('searchInput');
     const activityFilter = document.getElementById('activityFilter');
     const plantFilter = document.getElementById('plantFilter');
@@ -823,22 +836,22 @@
     // ============================================================
     // 3. ФУНКЦИИ РАБОТЫ С ДАННЫМИ
     // ============================================================
-    
+
     // Обновление статистики в шапке
     function updateStats(data) {
         const compounds = data.length;
         const plants = new Set();
         const activities = new Set();
-        
+
         data.forEach(item => {
             if (item.all_plants) {
                 item.all_plants.split(',').forEach(p => plants.add(p.trim()));
             }
             if (item.all_roles) {
-                item.all_roles.split(',').forEach(a => activities.add(a.trim()));
+                cleanList(item.all_roles, ',').forEach(a => activities.add(a));
             }
         });
-        
+
         document.getElementById('totalCompounds').textContent = compounds;
         document.getElementById('totalPlants').textContent = plants.size;
         document.getElementById('totalActivities').textContent = activities.size;
@@ -848,28 +861,28 @@
     function populateFilters(data) {
         const plants = new Set();
         const activities = new Set();
-        
+
         data.forEach(item => {
             if (item.all_plants) {
                 item.all_plants.split(',').forEach(p => plants.add(p.trim()));
             }
             if (item.all_roles) {
-                item.all_roles.split(',').forEach(a => activities.add(a.trim()));
+                cleanList(item.all_roles, ',').forEach(a => activities.add(a));
             }
         });
-        
+
         // Растения
         plantFilter.innerHTML = '<option value="">Все растения</option>';
         [...plants].sort().forEach(p => {
             plantFilter.innerHTML += `<option value="${p}">${p}</option>`;
         });
-        
+
         // Активности
         activityFilter.innerHTML = '<option value="">Все активности</option>';
         [...activities].sort().forEach(a => {
             activityFilter.innerHTML += `<option value="${a}">${a}</option>`;
         });
-        
+
         // Быстрые теги
         const tagContainer = document.getElementById('filterTags');
         tagContainer.innerHTML = '';
@@ -893,7 +906,7 @@
         const search = searchInput.value.toLowerCase().trim();
         const activity = activityFilter.value;
         const plant = plantFilter.value;
-        
+
         filteredData = allData.filter(item => {
             // Поиск
             if (search) {
@@ -904,22 +917,22 @@
                     return false;
                 }
             }
-            
+
             // Фильтр по активности
             if (activity) {
-                const acts = (item.all_roles || '').split(',').map(a => a.trim());
+                const acts = cleanList(item.all_roles, ',');
                 if (!acts.includes(activity)) return false;
             }
-            
+
             // Фильтр по растению
             if (plant) {
                 const plants = (item.all_plants || '').split(',').map(p => p.trim());
                 if (!plants.includes(plant)) return false;
             }
-            
+
             return true;
         });
-        
+
         currentPage = 1;
         renderResults();
     }
@@ -928,7 +941,7 @@
     function renderResults() {
         const total = filteredData.length;
         resultCount.textContent = total;
-        
+
         if (total === 0) {
             resultsContainer.innerHTML = `
                 <div class="no-results">
@@ -940,20 +953,19 @@
             pagination.innerHTML = '';
             return;
         }
-        
+
         const totalPages = Math.ceil(total / itemsPerPage);
         const start = (currentPage - 1) * itemsPerPage;
         const end = Math.min(start + itemsPerPage, total);
         const pageData = filteredData.slice(start, end);
-        
+
         const gridClass = currentView === 'grid' ? '' : 'list-view';
         let html = `<div class="cards-grid ${gridClass}">`;
-        
+
             pageData.forEach((item, index) => {
             const plants = (item.all_plants || '').split(',').map(p => p.trim()).filter(Boolean);
-            const activities = (item.all_roles || '').split(',').map(a => a.trim()).filter(Boolean);
-            const chebiRoles = (item.all_roles || '').split(',').map(r => r.trim()).filter(Boolean);
-            
+            const activities = cleanList(item.all_roles, ',');
+
             html += `
                 <div class="compound-card" data-index="${start + index}">
                     <span class="card-badge">CID ${item.pubchem_cid || 'N/A'}</span>
@@ -974,10 +986,10 @@
                 </div>
             `;
         });
-        
+
         html += `</div>`;
         resultsContainer.innerHTML = html;
-        
+
         document.querySelectorAll('.compound-card').forEach(card => {
             card.addEventListener('click', function() {
                 const index = parseInt(this.dataset.index);
@@ -985,7 +997,7 @@
                 if (item) openModal(item);
             });
         });
-        
+
         renderPagination(totalPages);
     }
 
@@ -995,12 +1007,12 @@
             pagination.innerHTML = '';
             return;
         }
-        
+
         let html = '';
         html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
             <i class="fas fa-chevron-left"></i>
         </button>`;
-        
+
         for (let i = 1; i <= totalPages; i++) {
             if (i === currentPage) {
                 html += `<button class="active">${i}</button>`;
@@ -1012,11 +1024,11 @@
                 html += `<button disabled>...</button>`;
             }
         }
-        
+
         html += `<button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
             <i class="fas fa-chevron-right"></i>
         </button>`;
-        
+
         pagination.innerHTML = html;
     }
 
@@ -1032,18 +1044,17 @@
     // ============================================================
     // 4. МОДАЛЬНОЕ ОКНО
     // ============================================================
-    
+
     function openModal(item) {
         const plants = (item.all_plants || '').split(',').map(p => p.trim()).filter(Boolean);
-        const activities = (item.all_roles || '').split(',').map(a => a.trim()).filter(Boolean);
-        const chebiRoles = (item.all_roles || '').split(',').map(r => r.trim()).filter(Boolean);
-        
+        const activities = cleanList(item.all_roles, ',');
+
         modalBody.innerHTML = `
             <h2>${item.name || 'Без названия'}</h2>
             <div class="modal-id">${item.InChIKey || ''}</div>
-            
+
             ${item.image_url ? `<img src="${item.image_url}" alt="${item.name}" style="max-width:300px;display:block;margin:16px auto;border-radius:12px;background:#f7fafc;padding:12px;" />` : ''}
-            
+
             <div class="detail-grid">
                 <div class="detail-item">
                     <label>PubChem CID</label>
@@ -1058,52 +1069,92 @@
                     <div class="value">${item.chembl || 'N/A'}</div>
                 </div>
                 <div class="detail-item">
-                    <label>Растений-источников</label>
-                    <div class="value">${plants.length}</div>
+                    <label>Lipinski pass</label>
+                    <div class="value">${item.lipinski_pass || 'N/A'}</div>
                 </div>
             </div>
-            
+
             ${item.iupac ? `
                 <div class="detail-item" style="margin:10px 0;">
                     <label>IUPAC название</label>
                     <div class="value">${item.iupac}</div>
                 </div>
             ` : ''}
-            
+
             ${item.smiles ? `
                 <div class="detail-item" style="margin:10px 0;">
                     <label>SMILES</label>
                     <div class="value smiles">${item.smiles}</div>
                 </div>
             ` : ''}
-            
+        
+            ${item.synonyms ? `
+                <div class="section-title"><i class="fas fa-tags"></i> Синонимы</div>
+                <div class="list-tags">
+                    ${cleanList(item.synonyms, ',').map(s => `<span class="tag" style="background:#e2e8f0;color:#2d3748;">${s}</span>`).join('')}
+                </div>
+            ` : ''}
+
             ${plants.length ? `
                 <div class="section-title"><i class="fas fa-tree"></i> Растения-источники (${plants.length})</div>
                 <div class="list-tags">
                     ${plants.map(p => `<span class="tag tag-plant">🌱 ${p}</span>`).join('')}
                 </div>
             ` : ''}
-            
+
             ${activities.length ? `
-                <div class="section-title"><i class="fas fa-bolt"></i> Активности (${activities.length})</div>
+                <div class="section-title"><i class="fas fa-microscope"></i> Активности (${activities.length})</div>
                 <div class="list-tags">
-                    ${activities.map(a => `<span class="tag tag-activity">💊 ${a}</span>`).join('')}
+                    ${activities.map(a => `<span class="tag tag-activity">🔬 ${a}</span>`).join('')}
                 </div>
             ` : ''}
-            
-            ${chebiRoles.length ? `
-                <div class="section-title"><i class="fas fa-microscope"></i> CHEBI роли (${chebiRoles.length})</div>
-                <div class="list-tags">
-                    ${chebiRoles.map(r => `<span class="tag tag-chebi">🧪 ${r}</span>`).join('')}
-                </div>
-            ` : ''}
-            
+        
+            <div class="section-title"><i class="fas fa-flask"></i> Физико-химические свойства</div>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                <tr style="background:#f7fafc;">
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;"><b>Мол. масса (MW)</b></td>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;">${item.MolecularWeight ?? 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;"><b>XLogP</b></td>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;">${item.XLogP ?? 'N/A'}</td>
+                </tr>
+                <tr style="background:#f7fafc;">
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;"><b>Доноры H-связей</b></td>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;">${item.HBondDonorCount ?? 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;"><b>Акцепторы H-связей</b></td>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;">${item.HBondAcceptorCount ?? 'N/A'}</td>
+                </tr>
+                <tr style="background:#f7fafc;">
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;"><b>Вращаемые связи</b></td>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;">${item.RotatableBondCount ?? 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;"><b>TPSA</b></td>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;">${item.TPSA ?? 'N/A'}</td>
+                </tr>
+                <tr style="background:#f7fafc;">
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;"><b>Тяжёлые атомы</b></td>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;">${item.HeavyAtomCount ?? 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;"><b>Заряд</b></td>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;">${item.Charge ?? 'N/A'}</td>
+                </tr>
+                <tr style="background:#f7fafc;">
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;"><b>Сложность</b></td>
+                    <td style="padding:8px 12px;border:1px solid #e2e8f0;">${item.Complexity ?? 'N/A'}</td>
+                </tr>
+            </table>
+
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #edf2f7;font-size:13px;color:#a0aec0;">
-                <i class="fas fa-info-circle"></i> 
+                <i class="fas fa-info-circle"></i>
                 Данные получены из PubChem, ChEBI, Dr. Duke's Phytochemical Database
             </div>
         `;
-        
+
         modalOverlay.classList.add('open');
         document.body.style.overflow = 'hidden';
     }
@@ -1124,51 +1175,51 @@
     // ============================================================
     // 5. ЗАГРУЗКА ИЗ CSV
     // ============================================================
-    
+
     async function loadFromCSV() {
         console.log('🔄 Начинаю загрузку CSV...');
-        
+
         // ⬇️⬇️⬇️ ИЗМЕНИТЕ НАЗВАНИЕ ВАШЕГО ФАЙЛА ⬇️⬇️⬇️
         const fileName = 'df_roles_chem_prop.csv';  // <--- ЗДЕСЬ ВАШЕ ИМЯ ФАЙЛА
         console.log('📁 Ищу файл:', fileName);
-        
+
         try {
             const response = await fetch(fileName);
             console.log('📡 Статус ответа:', response.status);
-            
+
             if (!response.ok) {
                 console.error('❌ Файл не найден! Статус:', response.status);
                 return null;
             }
-            
+
             const text = await response.text();
             console.log('📄 Размер файла:', text.length, 'байт');
-            
+
             if (text.length === 0) {
                 console.error('❌ Файл пустой!');
                 return null;
             }
-            
+
             const lines = text.split('\n').filter(line => line.trim());
             console.log('📊 Найдено строк:', lines.length);
-            
+
             if (lines.length < 2) {
                 console.error('❌ В файле нет данных');
                 return null;
             }
-            
+
             const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
             console.log('📋 Заголовки:', headers);
-            
+
             const data = [];
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
                 if (!line.trim()) continue;
-                
+
                 const values = [];
                 let current = '';
                 let inQuotes = false;
-                
+
                 for (let j = 0; j < line.length; j++) {
                     const char = line[j];
                     if (char === '"') {
@@ -1181,7 +1232,7 @@
                     }
                 }
                 values.push(current.trim());
-                
+
                 const obj = {};
                 headers.forEach((h, idx) => {
                     if (idx < values.length) {
@@ -1192,10 +1243,10 @@
                 });
                 data.push(obj);
             }
-            
+
             console.log('✅ Загружено записей:', data.length);
             return data;
-            
+
         } catch (error) {
             console.error('❌ Ошибка:', error);
             return null;
@@ -1205,13 +1256,13 @@
     // ============================================================
     // 6. ИНИЦИАЛИЗАЦИЯ
     // ============================================================
-    
+
     (async function init() {
         console.log('🚀 Инициализация...');
-        
+
         // Пробуем загрузить CSV
         const csvData = await loadFromCSV();
-        
+
         if (csvData && csvData.length > 0) {
             allData = csvData;
             console.log('✅ Данные из CSV! Всего:', allData.length);
@@ -1219,20 +1270,20 @@
             allData = demoData;
             console.log('⚠️ Используются демо-данные');
         }
-        
+
         // Обновляем интерфейс
         updateStats(allData);
         populateFilters(allData);
         filteredData = [...allData];
         renderResults();
-        
+
         console.log('✅ Готово!');
     })();
 
     // ============================================================
     // 7. ОБРАБОТЧИКИ СОБЫТИЙ
     // ============================================================
-    
+
     searchBtn.addEventListener('click', applyFilters);
     searchInput.addEventListener('keyup', function(e) {
         if (e.key === 'Enter') applyFilters();
